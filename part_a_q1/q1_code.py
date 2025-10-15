@@ -1,11 +1,21 @@
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+
+# --- Import dependencies ---
 import cv2
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 from ultralytics import YOLO
 
-# Load YOLO model (update path if needed)
-model = YOLO("runs/detect/train/weights/best.pt")
+# --- Initialize YOLO model ---
+try:
+    model = YOLO("runs/detect/train/weights/best.pt")
+except Exception:
+    print("⚠️ best.pt not found — using untrained YOLO model.")
+    model = YOLO()  # Initialize default YOLO model (no weights)
 
 # License plate damage classes
 classes = ['broken', 'non broken']
@@ -24,19 +34,13 @@ def predict_image(image_path):
         x1, y1, x2, y2 = map(int, box)
         class_id = int(cls)
 
-        # Safe check to avoid "list index out of range"
         if class_id < len(classes):
             class_name = classes[class_id]
         else:
             class_name = f"Unknown({class_id})"
 
-        # Red for broken, green for non-broken
         color = (0, 0, 255) if class_name == "broken" else (0, 255, 0)
-
-        # Draw bounding box
         cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
-
-        # Label with class + confidence
         label = f"{class_name}: {conf:.2f}"
         cv2.putText(image, label, (x1, y1 - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
@@ -50,14 +54,11 @@ def show_image(image_path):
         messagebox.showerror("Error", "Could not process the image.")
         return
 
-    # Resize to fit Tkinter window
     image_pil = Image.fromarray(image)
     image_pil = image_pil.resize((600, 400), Image.Resampling.LANCZOS)
-
     image_tk = ImageTk.PhotoImage(image_pil)
     panel.config(image=image_tk)
     panel.image = image_tk
-
 
 # Function to open a file dialog for image selection
 def upload_image():
@@ -81,8 +82,7 @@ def predict_video(video_path):
             cap.release()
             return
 
-        results = model.predict(source=image_path, imgsz=640, conf=0.25, verbose=False)
-
+        results = model.predict(source=frame, imgsz=640, conf=0.25, verbose=False)
         output = results[0]
 
         for box, conf, cls in zip(output.boxes.xyxy, output.boxes.conf, output.boxes.cls):
@@ -95,7 +95,6 @@ def predict_video(video_path):
                 class_name = f"Unknown({class_id})"
 
             color = (0, 0, 255) if class_name == "broken" else (0, 255, 0)
-
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
             label = f"{class_name}: {conf:.2f}"
             cv2.putText(frame, label, (x1, y1 - 10),
@@ -126,16 +125,13 @@ root = tk.Tk()
 root.title("License Plate Damage Detection")
 root.geometry("800x600")
 
-# Image/Video display panel
 panel = tk.Label(root)
 panel.pack(padx=10, pady=10)
 
-# Buttons
 btn_image = tk.Button(root, text="Upload Image", command=upload_image)
 btn_image.pack(side="left", padx=20, pady=20)
 
 btn_video = tk.Button(root, text="Upload Video", command=upload_video)
 btn_video.pack(side="right", padx=20, pady=20)
 
-# Run GUI
 root.mainloop()
