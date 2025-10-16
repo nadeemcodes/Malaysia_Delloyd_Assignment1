@@ -37,11 +37,19 @@ while True:
             nose = landmarks.landmark[1]
             cv2.circle(frame, (int(nose.x * w), int(nose.y * h)), 6, (0, 255, 0), -1)
 
-            # Left & right eye centers
-            left_eye = landmarks.landmark[33]
-            right_eye = landmarks.landmark[263]
-            cv2.circle(frame, (int(left_eye.x * w), int(left_eye.y * h)), 6, (255, 0, 0), -1)
-            cv2.circle(frame, (int(right_eye.x * w), int(right_eye.y * h)), 6, (255, 0, 0), -1)
+            # Left & right eye centers (improved accuracy)
+            left_eye_indices = [33, 133, 159, 145]   # around left eye
+            right_eye_indices = [263, 362, 386, 374] # around right eye
+
+            lx = int(sum([landmarks.landmark[i].x for i in left_eye_indices]) / len(left_eye_indices) * w)
+            ly = int(sum([landmarks.landmark[i].y for i in left_eye_indices]) / len(left_eye_indices) * h)
+
+            rx = int(sum([landmarks.landmark[i].x for i in right_eye_indices]) / len(right_eye_indices) * w)
+            ry = int(sum([landmarks.landmark[i].y for i in right_eye_indices]) / len(right_eye_indices) * h)
+
+            # Draw eye centers
+            cv2.circle(frame, (lx, ly), 6, (255, 0, 0), -1)
+            cv2.circle(frame, (rx, ry), 6, (255, 0, 0), -1)
 
     cv2.imshow("Face + Features", frame)
     if cv2.waitKey(1) & 0xFF == 27:  # ESC
